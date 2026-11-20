@@ -6,9 +6,9 @@
   let answers = [];         // index of chosen option per question
   let current = 0;
 
-  const goose = (n) => `img/geese/${n}.webp`;
-  const scene = (n) => `img/scenes/${n}.webp`;
-  const label = (n) => `img/labels/${n}.webp`;
+  const goose = (n) => `${n}.webp`;
+  const scene = (n) => `${n}.webp`;
+  const label = (n) => `${n}.webp`;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   /* ---------------- scoring ---------------- */
