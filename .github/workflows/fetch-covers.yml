@@ -1,0 +1,48 @@
+# Finds covers for books in data.js that don't have one yet, and puts the
+# results on the "cover-updates" branch for checking. Nothing goes live until
+# that branch is merged into main.
+#
+# To run: GitHub → Actions → "Fetch missing book covers" → Run workflow.
+name: Fetch missing book covers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-covers
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow
+        run: pip install pillow==11.0.0
+
+      - name: Fetch covers
+        run: python .github/scripts/fetch_covers.py
+
+      - name: Save to the cover-updates branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B cover-updates
+          git add covers data.js
+          if git diff --cached --quiet; then
+            echo "No new covers found." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "Add book covers found by the Fetch missing book covers job"
+          git push --force origin cover-updates
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Saved to the **cover-updates** branch. Check the covers, then merge it into main to put them live." >> "$GITHUB_STEP_SUMMARY"

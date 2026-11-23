@@ -21,6 +21,7 @@ Live site: https://mrross9.github.io/reader-goose/ (Pages deploys from `main`, r
 - Content edits go in `data.js`. Keep its format valid (commas, quotes, brackets).
 - Images live in the repo root as `.webp`. Reference them by bare name; `app.js` adds `.webp`. The one exception is book covers, which live in `covers/` (see below).
 - Book covers: `covers/<slug>.webp`, about 240px wide. Each book in `data.js` names its file with `cover: "<slug>"` (no folder or extension). The slug is the title in lowercase with hyphens and without the series note in brackets, e.g. "Stormbreaker (Alex Rider #1)" → `stormbreaker`. A book with no `cover`, or whose image fails to load, shows a plain coloured tile with its title. Covers are saved in the repo, never loaded from another site, so students' browsers don't contact outside services.
+- To fetch covers for new books, run the "Fetch missing book covers" GitHub Action (`.github/workflows/fetch-covers.yml`, script in `.github/scripts/fetch_covers.py`). It only fills books with no `cover`, takes exact title matches only (Open Library, then Google Books), and pushes to the `cover-updates` branch for checking before merging to main. It runs on GitHub rather than locally because the school network blocks archive.org and throttles Google Books.
 
 ## Open questions for the English faculty (don't act on these yet)
 
