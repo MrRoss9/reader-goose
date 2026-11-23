@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -42,16 +43,26 @@ def title_ok(candidate, clean):
     return main in (norm(clean), norm(clean.split(":")[0]))
 
 
+START = time.time()
+TIME_BUDGET = 25 * 60  # stop looking after 25 min and save what we have
+
+
 def get(url, as_json=False, tries=3):
+    last = None
     for i in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=20) as r:
                 data = r.read()
                 return json.loads(data) if as_json else data
-        except Exception as e:  # noqa: BLE001 - network errors of all kinds just mean "try again / skip"
+        except urllib.error.HTTPError as e:
             last = e
-            time.sleep(3 * (i + 1))
-    print(f"    ! {url[:90]} -> {last}")
+            if e.code != 429 and e.code < 500:
+                break  # 404 etc.: retrying won't help
+            time.sleep(2 * (i + 1))
+        except Exception as e:  # noqa: BLE001 - timeouts, resets: try again
+            last = e
+            time.sleep(2 * (i + 1))
+    print(f"    ! {url[:90]} -> {last}", flush=True)
     return None
 
 
@@ -123,21 +134,25 @@ def main():
         if has_cover or slug in done:
             continue
         done.add(slug)
-        print(f"- {title}")
+        if time.time() - START > TIME_BUDGET:
+            missing.append(f"{title} (not tried: out of time, run the job again)")
+            continue
+        print(f"- {title}", flush=True)
         saved = None
-        for url, label in open_library_candidates(clean, author) + google_candidates(clean, author):
-            raw = get(url, tries=2)
-            if raw and save_cover(raw, os.path.join(COVERS, f"{slug}.webp")):
-                saved = label
+        for source in (open_library_candidates, google_candidates):
+            for url, label in source(clean, author)[:4]:
+                raw = get(url, tries=1)
+                if raw and save_cover(raw, os.path.join(COVERS, f"{slug}.webp")):
+                    saved = label
+                    break
+            if saved:
                 break
-            time.sleep(0.5)
         if saved:
-            print(f"    found ({saved})")
+            print(f"    found ({saved})", flush=True)
             found.append((title, slug, saved))
         else:
-            print("    no confident match")
+            print("    no confident match", flush=True)
             missing.append(title)
-        time.sleep(0.5)
 
     slugs = {s for _, s, _ in found}
 

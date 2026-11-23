@@ -18,9 +18,23 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # If an earlier run left covers on cover-updates that aren't merged yet,
+      # carry on from there instead of starting again.
+      - name: Continue from cover-updates if it exists
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin cover-updates >/dev/null; then
+            git fetch origin cover-updates
+            git checkout -B cover-updates origin/cover-updates
+            git merge --no-edit origin/main || { git merge --abort; git checkout -B cover-updates origin/main; }
+          fi
 
       - uses: actions/setup-python@v5
         with:
@@ -30,12 +44,10 @@ jobs:
         run: pip install pillow==11.0.0
 
       - name: Fetch covers
-        run: python .github/scripts/fetch_covers.py
+        run: python -u .github/scripts/fetch_covers.py
 
       - name: Save to the cover-updates branch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B cover-updates
           git add covers data.js
           if git diff --cached --quiet; then
